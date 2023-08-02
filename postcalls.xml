@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="post:\user\register:application\json:updateduser-config" doc:id="530ac084-7843-4b69-9f5c-b30057912b9c" >
+		<set-variable value="#[payload]" doc:name="parameters" doc:id="1622f270-2d14-4d60-9268-a50a23190630" variableName="urivar" />
+		<db:insert doc:name="user registration" doc:id="d98e5f0a-91ae-426b-9740-6e4b331e50bf" config-ref="Database_Config" >
+			<db:sql ><![CDATA[INSERT INTO usertable(userId, userName, Uemail, password, UcontactNumber)
+VALUES (:userId, :userName, :Uemail, :password, :UcontactNumber);]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	userId : vars.urivar.userId,
+	userName : vars.urivar.userName,
+	Uemail : vars.urivar.Uemail,
+	password : vars.urivar.password,
+	UcontactNumber : vars.urivar.UcontactNumber
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="response" doc:id="94793a56-61bd-4300-bbdb-cacb688c28f6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  userId: vars.urivar.userId,
+  message: "User registered successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="a921fe27-0d45-4896-b56d-97552e3de770" type="ANY">
+				<ee:transform doc:name="Transform Message" doc:id="c44ac5bf-d9f5-4388-a1e8-be590b42980e" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	description: error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="post:\user\(userId)\bookflight:application\json:updateduser-config" doc:id="e12f8bbd-3360-4e4d-b931-ba5e9503bf74" >
+		<set-variable value='#[%dw 2.0&#10;output application/json&#10;&#10;var userId = attributes.uriParams.userId&#10;var flightdeparturedate= payload.flightdeparturedate&#10;var flightNumber= payload.flightNumber&#10;var price= payload.price&#10;var cardNumber= payload.cardNumber&#10;var expirationDate= payload.expirationDate&#10;var cvv= payload.cvv	&#10;---&#10;&#10;{&#10;	"userId": userId,&#10;	"flightdeparturedate":flightdeparturedate,&#10;	"flightNumber":flightNumber,&#10;	"price": price,&#10;	"cardNumber": cardNumber,&#10;	"expirationDate": expirationDate,&#10;	"cvv": cvv&#10;}]' doc:name="parameters" doc:id="11b1ca87-9da3-4af0-83e5-736e1f777408" variableName="urivar" />
+		<db:select doc:name="validating user details" doc:id="889a06de-74cd-43fc-90a3-8e629a93eb2e" config-ref="Database_Config" >
+			<db:sql ><![CDATA[SELECT usertable.userid, flight_details.flightNumber
+FROM usertable, flight_details
+WHERE usertable.userid = :userid
+AND flight_details.flightNumber = :flightNumber
+AND flight_details.departureTime = :departureTime;
+]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	userid: vars.urivar.userId,
+	flightNumber: vars.urivar.flightNumber,
+	departureTime: vars.urivar.flightdeparturedate
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="f844ff0c-4a43-4848-afc7-fbca4bba5f83" >
+			<when expression="#[!(isEmpty(payload))]" >
+				<db:insert doc:name="booking a flight" doc:id="015a1718-b93f-4fd6-93af-ae06653f2ab7" config-ref="Database_Config" >
+					<db:sql ><![CDATA[INSERT INTO bookings (flightdeparturedate,flightNumber,userId,price,cardNumber,expirationDate,cvv) VALUES 
+(:flightdeparturedate,:flightNumber,:userId,:price,:cardNumber,:expirationDate,:cvv)]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	flightdeparturedate: vars.urivar.flightdeparturedate,
+	flightNumber: vars.urivar.flightNumber,
+	userId: vars.urivar.userId,
+	price: vars.urivar.price,
+	cardNumber: vars.urivar.cardNumber,
+	expirationDate: vars.urivar.expirationDate,
+	cvv: vars.urivar.cvv
+}]]]></db:input-parameters>
+				</db:insert>
+				<ee:transform doc:name="response" doc:id="d0f1ee82-4305-46e6-9c76-c12b9557c730" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "Flight booked successfully"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error response" doc:id="5193bb86-6a57-463b-8ca7-0eb735175ee5" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"error" : "invalid user id or flight details"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="post:\user\(userId)\flight\(flightNumber)\rating:application\json:updateduser-config" doc:id="66c64ed9-eb04-40c4-975a-48516f08738e" >
+		<set-variable value='#[%dw 2.0&#10;output application/json&#10;&#10;var userId = attributes.uriParams.userId&#10;var flightNumber = attributes.uriParams.flightNumber&#10;var rating = payload.rating&#10;&#10;---&#10;{&#10;  "userId": userId,&#10;  "flightNumber": flightNumber,&#10;  "rating": rating&#10;}]' doc:name="parameters" doc:id="d34d24b6-283d-43de-9b75-113b9416bf2b" variableName="urivar" />
+		<db:select doc:name="validate booking details" doc:id="c5642441-1792-4a9e-8e26-c51f66e3ab68" config-ref="Database_Config" >
+			<db:sql ><![CDATA[SELECT usertable.userid AS usertable_userid, bookings.flightNumber AS bookings_userid
+FROM usertable, bookings
+WHERE usertable.userid = :userid
+AND bookings.flightNumber = :flightNumber;
+]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	userid: vars.urivar.userId,
+	flightNumber: vars.urivar.flightNumber
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="28bdb436-9835-4b3f-9ed2-30417553e914" >
+			<when expression="#[!(isEmpty(payload))]" >
+				<db:insert doc:name="posting a rating" doc:id="6d34ed93-bb8a-486a-9083-1987b55ab145" config-ref="Database_Config" >
+					<db:sql ><![CDATA[INSERT INTO rating (userid, flightnumber, rating)
+VALUES (:userid, :flightnumber, :rating);]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	userid: vars.urivar.userId ,
+	flightnumber: vars.urivar.flightNumber,
+	rating: vars.urivar.rating}]]]></db:input-parameters>
+				</db:insert>
+				<db:select doc:name="fetch rating id" doc:id="6af59b84-a6b8-4858-b770-76b9a47a661e" config-ref="Database_Config" >
+					<db:sql ><![CDATA[SELECT ratingid FROM rating
+ORDER BY ratingid DESC
+LIMIT 1;]]></db:sql>
+				</db:select>
+				<ee:transform doc:name="response" doc:id="2725303e-9f3d-4bda-8363-246594b5822f" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "rating id" : payload.ratingid ,
+  message: "Rating posted successfully"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error response" doc:id="43c8d64b-3e17-407d-9009-3c04d72701ac" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"error" : "there is no booking on the given data (or) invalid userid or flightNumber"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>

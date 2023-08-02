@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="put:\user\(userId):application\json:updateduser-config" doc:id="d6ffd08a-1d4e-428d-a88b-61c1f82d1680" >
+		<set-variable value='#[%dw 2.0&#10;output application/json&#10;&#10;var userId = attributes.uriParams.userId&#10;var userName= payload.userName&#10;var Uemail= payload.Uemail&#10;var password= payload.password&#10;var UcontactNumber= payload.UcontactNumber&#10; &#10;---&#10;&#10;{&#10; "userId": userId,&#10; "userName": userName,&#10; "Uemail": Uemail,&#10; "password": password,&#10; "UcontactNumber": UcontactNumber&#10;}]' doc:name="parameters" doc:id="0a516b56-b120-4486-aa7a-2bb81064dd06" variableName="urivar" />
+		<db:select doc:name="validating user details" doc:id="fdcf83ca-b4f5-4059-aebe-c88e4381ce7e" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select userid from usertable where userid=:userid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	userid: vars.urivar.userId
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="7d5c557f-1b55-425c-9ae1-d1bdf69b996f" >
+			<when expression="#[!(isEmpty(payload))]" >
+				<db:update doc:name="Update user details" doc:id="1074bbdf-8030-4242-b671-e2f002da1f60" config-ref="Database_Config" >
+					<db:sql ><![CDATA[UPDATE usertable
+SET userName = :userName,
+    Uemail = :Uemail,
+    password = :password,
+    UcontactNumber = :UcontactNumber
+WHERE userId = :userId;]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	userId: vars.urivar.userId,
+	userName: vars.urivar.userName ,
+	Uemail: vars.urivar.Uemail ,
+	password: vars.urivar.password ,
+	UcontactNumber: vars.urivar.UcontactNumber
+	
+}]]]></db:input-parameters>
+				</db:update>
+				<ee:transform doc:name="response" doc:id="6624e9ab-892a-4ef1-90e1-48ecbb8c4006" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "User profile updated successfully"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error response" doc:id="510a35e0-58e0-413e-8a09-c75a644de55e" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"error" : "invalid user id"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="put:\user\(userid)\bookings\(bookingId):application\json:updateduser-config" doc:id="37a02784-9298-4289-9653-be81a68c0c4f" >
+		<set-variable value='#[%dw 2.0&#10;output application/json&#10;&#10;var userId = attributes.uriParams.userid&#10;var bookingId = attributes.uriParams.bookingId&#10;var cardNumber= payload.cardNumber&#10;var expirationDate= payload.expirationDate&#10;var cvv= payload.cvv &#10;---&#10;&#10;{&#10; "userId": userId,&#10; "bookingId": bookingId,&#10; "cardNumber": cardNumber,&#10; "expirationDate": expirationDate,&#10; "cvv": cvv&#10;}]' doc:name="parameters" doc:id="485998d1-d3eb-47b6-91c3-c9610851131e" variableName="uvars" />
+		<db:select doc:name="validating user and booking id" doc:id="38a7f858-f2d9-43f1-adf3-2de7ef4e7087" config-ref="Database_Config" >
+			<db:sql ><![CDATA[SELECT usertable.userid, bookings.bookingid
+FROM usertable, bookings
+WHERE usertable.userid = :userid
+AND bookings.bookingid = :bookingid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	userid: vars.uvars.userId ,
+	bookingid: vars.uvars.bookingId
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="2e8ab875-35c5-41b4-bc66-1423ff29dbd0" >
+			<when expression="#[!(isEmpty(payload))]" >
+				<db:update doc:name="Update booking" doc:id="13132cd6-4299-4b75-a3c0-fa82c16e1853" config-ref="Database_Config" >
+					<db:sql ><![CDATA[UPDATE bookings
+SET cardNumber = :cardNumber,
+    expirationDate = :expirationDate,
+    cvv = :cvv
+WHERE userId = :userId AND bookingid = :bookingId;]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{ 
+    userId: vars.uvars.userId ,
+    bookingId: vars.uvars.bookingId ,
+    cardNumber: vars.uvars.cardNumber ,
+    expirationDate: vars.uvars.expirationDate,
+    cvv: vars.uvars.cvv
+  }]]]></db:input-parameters>
+				</db:update>
+				<ee:transform doc:name="response" doc:id="3af4d9ec-86c6-4619-a5a8-151784841052" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "Booking details updated successfully"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error response" doc:id="cb5fea6b-c875-480e-a70b-cc1ee1e7a1ca" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"error" : "invalid booking id"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>

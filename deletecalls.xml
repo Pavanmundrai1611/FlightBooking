@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="delete:\user\remove\(ratingid):updateduser-config" doc:id="9ca8b413-a6f0-4122-95a5-4a0f0c08f5de" >
+		<set-variable value="#[attributes.uriParams.ratingid]" doc:name="parameters" doc:id="d18f9994-0e23-4546-9a5a-fcd3da845e2b" variableName="urivar" />
+		<db:select doc:name="validating ratingid" doc:id="6c34087b-3a33-4ece-bbe7-631a929c0f24" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select ratingid from rating where ratingid=:ratingid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	ratingid: vars.urivar
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="dbc1020d-e0ea-4c6f-ba39-14c8e0681478" >
+			<when expression="#[!(isEmpty(payload))]" >
+				<db:delete doc:name="Deleting the rating" doc:id="64379604-bb2f-49d3-8360-b975c49314db" config-ref="Database_Config" >
+					<db:sql ><![CDATA[delete from rating where ratingid=:ratingid]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	ratingid: vars.urivar
+}]]]></db:input-parameters>
+				</db:delete>
+				<ee:transform doc:name="response" doc:id="8642db25-5c70-4dcd-bcdd-b6bb107958df" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message" : "rating is deleted successfully"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error response" doc:id="0b2956a3-53bc-41e9-bf01-774027dbcf5e" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "error": "invalid rating id"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="delete:\user\(userid)\bookings\(bookingId):updateduser-config" doc:id="9877f6b2-4917-4cff-8daa-d7881845c09a" >
+		<set-variable value="#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; userId: attributes.uriParams.userid,&#10; bookingId: attributes.uriParams.bookingId&#10;}]" doc:name="parameters" doc:id="571dd756-879a-4409-ae5f-f48b93ad49bf" variableName="urivar" />
+		<db:select doc:name="validating user and booking id" doc:id="b5f50a55-2707-45df-8446-a5280453514d" config-ref="Database_Config" >
+			<db:sql ><![CDATA[SELECT usertable.userid, bookings.bookingid
+FROM usertable, bookings
+WHERE usertable.userid = :userid
+AND bookings.bookingid = :bookingid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	userid: vars.urivar.userId ,
+	bookingid: vars.urivar.bookingId
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="8eb2ea46-643a-40e5-94c7-8804c8276d23" >
+			<when expression="#[!(isEmpty(payload))]" >
+				<db:delete doc:name="Deleting the booking" doc:id="9cb1a95e-d316-470f-83ee-07c2c927e4d9" config-ref="Database_Config" >
+					<db:sql ><![CDATA[delete from bookings where bookingid=:bookingid and userid=:userid]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	bookingid: vars.urivar.bookingId,
+	userid: vars.urivar.userId
+}]]]></db:input-parameters>
+				</db:delete>
+				<ee:transform doc:name="response" doc:id="46b8b0e8-530a-45bd-a394-a82775049bd5" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "success": "deleted the booking."
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error response" doc:id="01027412-7d23-420d-94d1-a018da656774" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"error" : "invalid booking id"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>

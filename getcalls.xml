@@ -1,0 +1,315 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<flow name="get:\flights:updateduser-config" doc:id="eaf80550-3c66-4419-be7c-71429b7528e5" >
+		<db:select doc:name="Select" doc:id="9cccf65b-28b1-492a-9377-e404926812c7" config-ref="Database_Config" target="count">
+			<db:sql ><![CDATA[select * from flight_details]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="parameters" doc:id="7e22fa4a-9ec1-42e9-bfaa-1af3df016201" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="sqlQ" ><![CDATA[%dw 2.0
+output application/java
+
+var limit = attributes.queryParams.limit default null
+var offset = attributes.queryParams.offset default null
+var sort = attributes.queryParams.sort default null
+
+var query =
+    if (sort != null and limit == null and offset == null)
+        "SELECT * FROM flight_details " ++
+        "ORDER BY " ++ sort
+    else if (sort == null and limit != null and offset != null)
+        "SELECT * FROM flight_details " ++
+        "LIMIT " ++ (limit as String default "0") ++ 
+        " OFFSET " ++ (offset as String default "0")
+    else if (sort != null and limit != null and offset != null)
+        "SELECT * FROM flight_details " ++
+        "ORDER BY " ++ sort ++ 
+        " LIMIT " ++ (limit as String default "0") ++ 
+        " OFFSET " ++ (offset as String default "0")
+    else
+        "SELECT * FROM flight_details"
+
+---
+query]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<db:select doc:name="fetching all flights" doc:id="3d4d049d-e066-4de4-9311-c0bbd10fa6c8" config-ref="Database_Config" >
+			<db:sql ><![CDATA[#[vars.sqlQ]]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="response" doc:id="44d95088-d55e-412d-bb20-f8a9750846ac" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"total no of flights": sizeOf(vars.count),
+	"flight list" : payload
+	
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="get:\flights\(flightNumber)\(departureTime):updateduser-config" doc:id="37927465-b75d-4210-9d74-1008f656e40a" >
+		<set-variable value="#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; flightNumber: attributes.uriParams.flightNumber ,&#10; departureTime: attributes.uriParams.departureTime&#10;}]" doc:name="parameters" doc:id="07f05f3b-0894-479f-ac5b-47e5d6c47ec3" variableName="urivar" />
+		<db:select doc:name="validate flight details" doc:id="575831a2-2dba-4ecd-88e1-cba39dd19237" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select flightNumber from flight_details where flightNumber=:flightNumber and departureTime=:departureTime]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	flightNumber: vars.urivar.flightNumber,
+	departureTime: vars.urivar.departureTime
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="6b9ab1b2-627c-4f7c-80a2-1616ade0eb03" >
+			<when expression="#[!(isEmpty(payload))]" >
+				<db:select doc:name="fetch flight details" doc:id="cc7b28d0-9602-4816-bd73-aac87eff70c4" config-ref="Database_Config" >
+					<db:sql ><![CDATA[select * from flight_details where flightNumber=:flightNumber and departureTime=:departureTime]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	flightNumber: vars.urivar.flightNumber,
+	departureTime: vars.urivar.departureTime
+}]]]></db:input-parameters>
+				</db:select>
+				<ee:transform doc:name="response" doc:id="9321c609-97fb-4884-bec2-3115c448b519" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error response" doc:id="97df2c17-c0fc-432d-81c7-62e7757aea50" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"error":"invalid flight details"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="get:\user\(userId):updateduser-config" doc:id="b36d0c7c-70fe-4250-9abd-12befa8fd412" >
+		<set-variable value="#[attributes.uriParams.userId]" doc:name="parameters" doc:id="8ea7ceda-4c46-47b5-a86f-6457f9dd5600" variableName="urivar" />
+		<db:select doc:name="validating user details" doc:id="3b5246ea-5d0c-476d-aa2a-39384818669e" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select userid from usertable where userid=:userid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	userid: vars.urivar
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="36a30f3c-02d6-4110-82ee-007367ef3c60" >
+			<when expression="#[!(isEmpty(payload))]" >
+				<db:select doc:name="fetching user details" doc:id="3f4927dc-d366-41a2-bd6f-f71fcb37f541" config-ref="Database_Config" >
+					<db:sql ><![CDATA[select * from usertable where userid=:userid]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	userid: vars.urivar
+}]]]></db:input-parameters>
+				</db:select>
+				<ee:transform doc:name="response" doc:id="ae0a0cfe-08ba-4bd5-b3ca-c1ba1dfe702f" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error response" doc:id="96f5cde4-e18f-4644-9429-94016ac6d0d9" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "error": "invalid user id"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="get:\user\(userId)\allbookings:updateduser-config" doc:id="c6098b1c-966e-42f8-9cc6-0ac64e3254a4" >
+		<set-variable value='#[%dw 2.0&#10;output application/json&#10;&#10;var userId = attributes.uriParams.userId&#10;var limit = attributes.queryParams.limit&#10;var offset = attributes.queryParams.offset&#10;var sort = attributes.queryParams.sort &#10;---&#10;{&#10;	"userId":userId,&#10;	"limit":limit,&#10;	"offset":offset,&#10;	"sort":sort&#10;}]' doc:name="parameters" doc:id="a558c902-f52a-476f-8420-8d88871d399a" variableName="urivar" />
+		<db:select doc:name="validating user details" doc:id="4ae0839f-c427-428a-bd82-b5ff801d010f" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select userid from usertable where userid=:userid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	userid: vars.urivar.userId
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="97324972-2a5b-4a0d-bad7-a6350d3f4f72" >
+			<when expression="#[!(isEmpty(payload))]" >
+				<ee:transform doc:name="parameters" doc:id="3b49fddf-e76a-4552-9b76-56b7785b5440" >
+					<ee:variables >
+						<ee:set-variable variableName="sqlQ" ><![CDATA[%dw 2.0
+output application/java
+
+var userId = vars.urivar.userId
+var limit = vars.urivar.limit default null
+var offset = vars.urivar.offset default null
+var sort = vars.urivar.sort default null
+
+var query =
+    if (sort != null and limit == null and offset == null)
+        "SELECT * FROM bookings WHERE userId = " ++ userId ++
+        " ORDER BY " ++ sort
+    else if (sort == null and limit != null and offset != null)
+        "SELECT * FROM bookings WHERE userId = " ++ userId ++
+        " LIMIT " ++ (limit as String default "0") ++
+        " OFFSET " ++ (offset as String default "0")
+    else if (sort != null and limit != null and offset != null)
+        "SELECT * FROM bookings WHERE userId = " ++ userId ++
+        " ORDER BY " ++ sort ++
+        " LIMIT " ++ (limit as String default "0") ++
+        " OFFSET " ++ (offset as String default "0")
+    else
+        "SELECT * FROM bookings WHERE userId = " ++ userId
+
+---
+query
+]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<db:select doc:name="fetching all bookings of user" doc:id="09213f25-3a2e-40c2-b825-76a00ef809f6" config-ref="Database_Config" >
+					<db:sql ><![CDATA[#[vars.sqlQ]]]></db:sql>
+				</db:select>
+				<ee:transform doc:name="response" doc:id="8db83bcc-3464-47b0-92c7-92848b6cfdc9" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error response" doc:id="7bbe60f3-3435-4b26-b5fd-5a9b224dd4ff" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"error" : "invalid user id"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="get:\user\(userId)\allratingsofuser:updateduser-config" doc:id="b5f8fd09-4bd0-4c9f-b2ea-ee1bb1b92595" >
+		<set-variable value='#[%dw 2.0&#10;output application/json&#10;&#10;var userId = attributes.uriParams.userId&#10;var limit = attributes.queryParams.limit&#10;var offset = attributes.queryParams.offset&#10;var sort = attributes.queryParams.sort &#10;---&#10;{&#10;	"userId":userId,&#10;	"limit":limit,&#10;	"offset":offset,&#10;	"sort":sort&#10;}]' doc:name="parameters" doc:id="313377dc-bd63-4f42-89a6-6ac8813b9727" variableName="urivar" />
+		<db:select doc:name="validating user details" doc:id="3dc75d77-7544-46f5-bd5d-0e6a9a8f8abb" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select userid from usertable where userid=:userid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	userid: vars.urivar.userId
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="c3149418-d208-473c-8381-4fb3e3069cc5" >
+			<when expression="#[!(isEmpty(payload))]" >
+				<ee:transform doc:name="parameters" doc:id="12cc4e5a-3585-418f-a1d8-34c51cd799ec" >
+					<ee:variables >
+						<ee:set-variable variableName="sqlQ" ><![CDATA[%dw 2.0
+output application/java
+
+var userId = vars.urivar.userId
+var limit = vars.urivar.limit default null
+var offset = vars.urivar.offset default null
+var sort = vars.urivar.sort default null
+
+var query =
+    if (sort != null and limit == null and offset == null)
+        "SELECT * FROM rating WHERE userId = " ++ userId ++
+        " ORDER BY " ++ sort
+    else if (sort == null and limit != null and offset != null)
+        "SELECT * FROM rating WHERE userId = " ++ userId ++
+        " LIMIT " ++ (limit as String default "0") ++
+        " OFFSET " ++ (offset as String default "0")
+    else if (sort != null and limit != null and offset != null)
+        "SELECT * FROM rating WHERE userId = " ++ userId ++
+        " ORDER BY " ++ sort ++
+        " LIMIT " ++ (limit as String default "0") ++
+        " OFFSET " ++ (offset as String default "0")
+    else
+        "SELECT * FROM rating WHERE userId = " ++ userId
+
+---
+query
+]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<db:select doc:name="fetching all ratings of user" doc:id="6db9b285-5571-4b85-88cb-70aa785d55e8" config-ref="Database_Config" >
+					<db:sql ><![CDATA[#[vars.sqlQ]]]></db:sql>
+				</db:select>
+				<ee:transform doc:name="response" doc:id="835cbaf9-a5e1-425c-be1a-6a8fc2ca3d48" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error response" doc:id="0c1e3f55-2502-4fbc-bdfa-cad64485d257" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"error" : "invalid userid"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="get:\user\(userid)\bookings\(bookingId):updateduser-config" doc:id="9c7a76d5-ff4b-476c-b727-934618dbadb3" >
+		<set-variable value="#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; userId: attributes.uriParams.userid,&#10; bookingId: attributes.uriParams.bookingId&#10;}]" doc:name="parameters" doc:id="95529af0-a581-4baf-a85e-5a6de74cd691" variableName="urivar" />
+		<db:select doc:name="validating user and booking id" doc:id="9d07807c-b4ae-4c05-b9da-6d8592b69d96" config-ref="Database_Config" >
+			<db:sql ><![CDATA[SELECT usertable.userid, bookings.bookingid
+FROM usertable, bookings
+WHERE usertable.userid = :userid
+AND bookings.bookingid = :bookingid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	userid: vars.urivar.userId,
+	bookingid: vars.urivar.bookingId
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="0953111e-b4c3-4fc5-9d55-572a26a9cb44" >
+			<when expression="#[!(isEmpty(payload))]" >
+				<db:select doc:name="fetching booking details" doc:id="01e4ac33-eb09-4107-81d5-c8bcbb6103b7" config-ref="Database_Config" >
+					<db:sql ><![CDATA[select * from bookings where bookingid=:bookingid]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	bookingid: vars.urivar.bookingId
+}]]]></db:input-parameters>
+				</db:select>
+				<ee:transform doc:name="response" doc:id="eab49fd2-07f7-4853-8fa1-e4c0d88449db" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error response" doc:id="76c2401f-4bee-49c6-80fc-eec309115647" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  error: "Booking not found. check the user id and booking id"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>
