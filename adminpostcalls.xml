@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="post:\admin\register:application\json:updatedadmin-config" doc:id="28569f6c-8c61-41bd-b89e-d2e5285f39b4" >
+		<set-variable value="#[payload]" doc:name="parameters" doc:id="dc07e6c3-4f92-440e-a324-2cd2ef749191" variableName="urivar" />
+		<db:insert doc:name="admin registration" doc:id="9122eeca-85c7-4665-b7cd-dcdfb103931b" config-ref="Database_Config" >
+			<db:sql ><![CDATA[INSERT INTO Admin (AdminId, airline, AdminName, Adminemail, Adminpassword, AdmincontactNumber)
+VALUES (:AdminId, :airline, :AdminName, :Adminemail, :Adminpassword, :AdmincontactNumber);]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	AdminId: vars.urivar.AdminId ,
+	airline: vars.urivar.airline ,
+	AdminName:vars.urivar.AdminName ,
+	Adminemail:vars.urivar.Adminemail ,
+	Adminpassword:vars.urivar.Adminpassword , 
+	AdmincontactNumber:vars.urivar.AdmincontactNumber
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="response" doc:id="6b9dc6c1-8141-4a05-ab57-9dd835e6653d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  adminId: vars.urivar.AdminId ,
+  airline: vars.urivar.airline ,
+  message: "Admin registered successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="eebe59bb-28df-444a-90e7-29be6dc2abe2" type="ANY" >
+				<ee:transform doc:name="error response" doc:id="665fe839-dd67-456e-81b6-f2a6e5267285" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	description: error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="post:\allflights:application\json:updatedadmin-config" doc:id="210d7c4d-4e79-4ca3-99e6-c90abe1bb3f8" >
+		<set-variable value='#[%dw 2.0&#10;output application/json&#10;&#10;var flightNumber = payload.flightNumber&#10;var airline = payload.airline&#10;var departureTime = payload.departureTime&#10;var arrivalTime = payload.arrivalTime&#10;var price = payload.price&#10;var availableSeats = payload.availableSeats&#10;var cabinClass = payload.cabinClass&#10;var origin = payload.origin&#10;var destination = payload.destination&#10;var rating = payload.rating&#10;&#10;---&#10;{&#10;  "flightNumber": flightNumber,&#10;  "airline": airline,&#10;  "departureTime": departureTime,&#10;  "arrivalTime": arrivalTime,&#10;  "price": price,&#10;  "availableSeats": availableSeats,&#10;  "cabinClass": cabinClass,&#10;  "origin": origin,&#10;  "destination": destination,&#10;  "rating": rating&#10;}]' doc:name="parameters" doc:id="60502ec4-e6de-4aa1-89b8-77f9c6cdbee2" variableName="urivar" />
+		<db:select doc:name="validating airline" doc:id="42055f2e-fde0-426e-a066-d236183359c9" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select adminid from admin where airline=:airline]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	airline: vars.urivar.airline
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="610de8cb-0a91-4572-992a-cbedbcce699c" >
+			<when expression="#[!(isEmpty(payload))]" >
+				<db:select doc:name="validate flight details" doc:id="608a5a89-c517-4b06-b21d-e3fa184754d0" config-ref="Database_Config" >
+					<db:sql ><![CDATA[select flightNumber from flight_details where flightNumber=:flightNumber and departureTime=:departureTime]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{	
+	flightNumber: vars.urivar.flightNumber,
+	departureTime: vars.urivar.departureTime
+}]]]></db:input-parameters>
+				</db:select>
+				<choice doc:name="Choice" doc:id="54e34a23-caf8-4b38-87ed-503a815ace41" >
+					<when expression="#[!(isEmpty(payload))]" >
+						<ee:transform doc:name="error response" doc:id="22409e33-abf7-49d6-bb80-1a30c5192c02" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  error: "flight already exists"
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+					</when>
+					<otherwise >
+						<db:insert doc:name="posting a new flight" doc:id="b8a0536b-c58f-4c05-b9b5-cf1a715634c6" config-ref="Database_Config" >
+							<db:sql ><![CDATA[INSERT INTO flight_details (flightNumber, airline, departureTime, arrivalTime, price, availableSeats, cabinClass, origin, destination, rating)
+VALUES (:flightNumber, :airline, :departureTime, :arrivalTime, :price, :availableSeats, :cabinClass, :origin, :destination, :rating)]]></db:sql>
+							<db:input-parameters ><![CDATA[#[{
+  "flightNumber": vars.urivar.flightNumber,
+  "airline": vars.urivar.airline,
+  "departureTime": vars.urivar.departureTime,
+  "arrivalTime": vars.urivar.arrivalTime,
+  "price": vars.urivar.price,
+  "availableSeats": vars.urivar.availableSeats,
+  "cabinClass": vars.urivar.cabinClass,
+  "origin": vars.urivar.origin,
+  "destination": vars.urivar.destination,
+  "rating": vars.urivar.rating
+}]]]></db:input-parameters>
+						</db:insert>
+						<ee:transform doc:name="response" doc:id="3e8189bf-4eec-4f4d-bc3f-5e0bbf2cbaba" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"success" : "new flight added"
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error response" doc:id="8ecdb868-0341-47c9-92ad-e5ceb1464fef" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"error" : "the airlines is not registered"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>

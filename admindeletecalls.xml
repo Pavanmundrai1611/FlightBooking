@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="delete:\admin\(adminId):updatedadmin-config" doc:id="f15dce91-2666-4a45-bc79-1c6640b4510a" >
+		<set-variable value="#[attributes.uriParams.adminId]" doc:name="parameters" doc:id="b872e7fb-c63d-4ad7-9a58-540da1dd09a7" variableName="urivar" />
+		<db:select doc:name="validating adminid" doc:id="0416606a-517f-4676-aa61-92fd30eb1eeb" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select adminid from admin where adminid=:adminid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	adminid: vars.urivar
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="94f89820-ae5a-4610-9b3e-c474d3e46006" >
+			<when expression="#[!(isEmpty(payload))]" >
+				<db:delete doc:name="deleting admin details" doc:id="677e19b8-0e83-4124-95d9-b12825c2ee3c" config-ref="Database_Config" >
+					<db:sql ><![CDATA[delete from admin where adminid=:adminid]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	adminid: vars.urivar
+}]]]></db:input-parameters>
+				</db:delete>
+				<ee:transform doc:name="response" doc:id="b93839a2-1573-4851-9273-0f331ef8ce80" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "message": "Admin deleted successfully"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error response" doc:id="9d36539b-c3e4-4ccf-93b6-09fb391cb078" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"error" : "given adminid doesn't exist"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="delete:\user\(userid)\removeuser:updatedadmin-config" doc:id="f2ff4e1e-5d81-415b-bc8c-a9578efa5e0e" >
+		<set-variable value="#[attributes.uriParams.userid]" doc:name="parameters" doc:id="d89d8423-3a9e-4976-b282-5995471bc98d" variableName="urivar" />
+		<db:select doc:name="validating userid" doc:id="59377cf9-15f2-42b1-98ce-8ffc25a84b80" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select userid from usertable where userid=:userid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	userid: vars.urivar
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="37cde14f-430b-49f6-9701-1ed856da0414" >
+			<when expression="#[!(isEmpty(payload))]" >
+				<db:delete doc:name="removing user" doc:id="522c4fc8-170e-42de-88fe-cc7b816046af" config-ref="Database_Config" >
+					<db:sql ><![CDATA[DELETE FROM usertable
+WHERE userid = :userid;]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	userid: vars.urivar
+}]]]></db:input-parameters>
+				</db:delete>
+				<ee:transform doc:name="response" doc:id="3858d368-48bd-4948-89ea-ef759be33b53" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "message": "user deleted successfully"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error response" doc:id="e48c93a2-7518-4c1f-a26f-4f6808f69b9f" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"error" : "invalid userid"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="delete:\flights\(flightNumber)\(departureTime)\deleteaflight:updatedadmin-config" doc:id="d917e8e9-7ab6-4433-a5b9-7ff657e8a661" >
+		<set-variable value="#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; departureTime: attributes.uriParams.departureTime ,&#10; flightNumber: attributes.uriParams.flightNumber&#10;}]" doc:name="parameters" doc:id="48d2ba64-f9af-445e-a580-c0b7523690b1" variableName="urivar" />
+		<db:select doc:name="validating flight details" doc:id="7665efb5-2d82-4907-a46f-00f0f5c41784" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select flightNumber from flight_details where flightNumber=:flightNumber and departureTime=:departureTime]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	departureTime: vars.urivar.departureTime,
+	flightNumber:vars.urivar.flightNumber
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="a20661ac-5984-4f3a-ac6b-8eeb884e7797" >
+			<when expression="#[!(isEmpty(payload))]" >
+				<db:delete doc:name="Deleting flight" doc:id="ef7b72d2-8f2c-4c7d-9172-121407b75373" config-ref="Database_Config" >
+					<db:sql ><![CDATA[delete from flight_details where flightNumber=:flightNumber and departureTime=:departureTime]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	flightNumber: vars.urivar.flightNumber,
+	departureTime: vars.urivar.departureTime
+}]]]></db:input-parameters>
+				</db:delete>
+				<ee:transform doc:name="response" doc:id="9daf333b-4c64-4576-889a-09a555d31de9" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"success" : "flight deleted"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error response" doc:id="d7c4219f-358c-427e-a4b6-4ac7fe6c4872" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"error" : "flight doesn't exists"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="delete:\user\(userid)\bookings\(bookingId):updatedadmin-config" doc:id="884d9759-630a-4e76-a2f7-e73d98c8b28b" >
+		<set-variable value="#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10; userid: attributes.uriParams.userid,&#10; bookingid: attributes.uriParams.bookingId&#10;}]" doc:name="parameters" doc:id="da181d6a-d1db-4db4-86e3-da69bea65f6a" variableName="urivar" />
+		<db:select doc:name="validating user and booking id" doc:id="8354c40a-9c4b-4b95-99e2-85dc23ca798f" config-ref="Database_Config" >
+			<db:sql ><![CDATA[SELECT usertable.userid, bookings.bookingid
+FROM usertable, bookings
+WHERE usertable.userid = :userid
+AND bookings.bookingid = :bookingid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	userid: vars.urivar.userid,
+	bookingid: vars.urivar.bookingid
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="5cabe647-826d-4f26-97d8-5da8efa1690b" >
+			<when expression="#[!(isEmpty(payload))]" >
+				<db:delete doc:name="Deleting a booking" doc:id="a21dfee2-226f-46dd-8403-fbb0626a9124" config-ref="Database_Config" >
+					<db:sql ><![CDATA[DELETE FROM bookings
+WHERE bookingid = :bookingid;]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	bookingid: vars.urivar.bookingid
+}]]]></db:input-parameters>
+				</db:delete>
+				<ee:transform doc:name="response" doc:id="baffd4b9-54f0-4d5b-8a38-d1900a6c18f3" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  success: "deleted the booking."
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error response" doc:id="028ba036-d355-4d81-819e-f8a3376bb992" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"error" : "invalid details!! check the given userid and bookingid"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>

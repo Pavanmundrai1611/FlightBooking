@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="put:\admin\(adminId):application\json:updatedadmin-config" doc:id="ff97bbac-4f2b-4f59-989c-8f44f8806c32" >
+		<set-variable value='#[%dw 2.0&#10;output application/json&#10;&#10;var adminid = attributes.uriParams.adminId&#10;var airline= payload.airline&#10;var AdminName= payload.AdminName&#10;var Adminemail= payload.Adminemail&#10;var Adminpassword= payload.Adminpassword&#10;var AdmincontactNumber= payload.AdmincontactNumber&#10;---&#10;{&#10;  "adminid": adminid,&#10;  "airline": airline,&#10;  "AdminName": AdminName,&#10;  "Adminemail": Adminemail,&#10;  "Adminpassword": Adminpassword,&#10;  "AdmincontactNumber": AdmincontactNumber&#10;}]' doc:name="parameters" doc:id="2ae4a792-d0df-4581-bdf1-42cba311188e" variableName="urivar" />
+		<db:select doc:name="validating adminid" doc:id="092eb3c8-e438-4576-b8e1-8bd1d05da302" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select adminid from admin where adminid=:adminid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	adminid: vars.urivar.adminid
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="cdc03851-1033-4ef5-b3f7-85d6825fd0fd" >
+			<when expression="#[!(isEmpty(payload))]" >
+				<db:update doc:name="Update admin details" doc:id="b1a7c477-a0da-4792-9996-ca387b16464c" config-ref="Database_Config" >
+					<db:sql ><![CDATA[UPDATE Admin
+SET airline = :airline,
+    AdminName = :AdminName,
+    Adminemail = :Adminemail,
+    Adminpassword = :Adminpassword,
+    AdmincontactNumber = :AdmincontactNumber
+WHERE AdminId = :adminid;]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	adminid: vars.urivar.adminid,
+	airline: vars.urivar.airline ,
+	AdminName: vars.urivar.AdminName,
+	Adminemail: vars.urivar.Adminemail,
+	Adminpassword: vars.urivar.Adminpassword,
+	AdmincontactNumber: vars.urivar.AdmincontactNumber
+}]]]></db:input-parameters>
+				</db:update>
+				<ee:transform doc:name="response" doc:id="d58ffc36-162e-48f6-b9f2-27046fe32af1" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "Admin profile updated successfully"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error response" doc:id="07069c18-e08f-4bf8-a0bb-8caac09e62f9" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"error" : "invalid admin id"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="3fca8c79-10ed-4bfa-be62-2522706fb340" type="ANY">
+				<ee:transform doc:name="error response" doc:id="bfadb15b-2bcb-4d2d-b889-1a854e35f74b" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	description: error.detailedDescription
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="put:\flights\(flightNumber)\(departureTime)\updateflightdetails:application\json:updatedadmin-config" doc:id="18edd987-c1e9-41eb-bb2b-98c76de7095d" >
+		<set-variable value='#[%dw 2.0&#10;output application/json&#10;&#10;var flightN = attributes.uriParams.flightNumber&#10;var departureT = attributes.uriParams.departureTime&#10;&#10;var flightNumber = payload.flightNumber&#10;var airline = payload.airline&#10;var departureTime = payload.departureTime&#10;var arrivalTime = payload.arrivalTime&#10;var price = payload.price&#10;var availableSeats = payload.availableSeats&#10;var cabinClass = payload.cabinClass&#10;var origin = payload.origin&#10;var destination = payload.destination&#10;var rating = payload.rating&#10;&#10;---&#10;{&#10;  "flightN": flightN,&#10;  "departureT": departureT,&#10;  "flightNumber": flightNumber,&#10;  "airline": airline,&#10;  "departureTime": departureTime,&#10;  "arrivalTime": arrivalTime,&#10;  "price": price,&#10;  "availableSeats": availableSeats,&#10;  "cabinClass": cabinClass,&#10;  "origin": origin,&#10;  "destination": destination,&#10;  "rating": rating,&#10;  "payload": payload&#10;}]' doc:name="parameters" doc:id="378b7576-4175-45ad-9196-e06e2fa6f050" variableName="urivar" />
+		<db:select doc:name="validating flight details" doc:id="473b0ca3-7086-46ec-ab88-f7a513fe6e00" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select flightNumber from flight_details where flightNumber=:flightN and departureTime=:departureT]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	flightN: vars.urivar.flightN ,
+	departureT: vars.urivar.departureT
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="fe619d8f-bb3f-455f-b343-bae3e8a5e7fc" >
+			<when expression="#[!(isEmpty(payload))]" >
+				<db:update doc:name="Updating flight details" doc:id="79392be5-f2f1-40c5-b809-9221380fbe1c" config-ref="Database_Config" >
+					<db:sql ><![CDATA[UPDATE flight_details
+SET arrivalTime = :arrivalTime,
+    price = :price,
+    availableSeats = :availableSeats,
+    cabinClass = :cabinClass
+WHERE flightNumber = :flightN
+  AND departureTime = :departureT;]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	"flightN": vars.urivar.flightN ,
+	"departureT": vars.urivar.departureT ,
+  "arrivalTime": vars.urivar.arrivalTime,
+  "price": vars.urivar.price,
+  "availableSeats": vars.urivar.availableSeats,
+  "cabinClass": vars.urivar.cabinClass
+}]]]></db:input-parameters>
+				</db:update>
+				<ee:transform doc:name="response" doc:id="42093bc2-6fae-494d-bff9-541de15241a7" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "Flight details updated successfully"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error response" doc:id="92d28e56-29df-4b89-8067-1fe260d08ece" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"error" : "invalid flight details"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="put:\user\(userid)\bookings\(bookingId):application\json:updatedadmin-config" doc:id="e0f69a35-f15d-461f-8a03-18a615abe911" >
+		<set-variable value='#[%dw 2.0&#10;output application/json&#10;&#10;var userId = attributes.uriParams.userid&#10;var bookingId = attributes.uriParams.bookingId&#10;var cardNumber= payload.cardNumber&#10;var expirationDate= payload.expirationDate&#10;var cvv= payload.cvv &#10;---&#10;&#10;{&#10; "userId": userId,&#10; "bookingId": bookingId,&#10; "cardNumber": cardNumber,&#10; "expirationDate": expirationDate,&#10; "cvv": cvv&#10;}]' doc:name="parameters" doc:id="6b96b877-a9bb-4cb2-a4b3-46321ac1862d" variableName="urivar" />
+		<db:select doc:name="validating user and booking id" doc:id="acd1c217-13a6-4558-ab87-81971f0de0c5" config-ref="Database_Config" >
+			<db:sql ><![CDATA[SELECT usertable.userid, bookings.bookingid
+FROM usertable, bookings
+WHERE usertable.userid = :userid
+AND bookings.bookingid = :bookingid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	userid: vars.urivar.userId ,
+	bookingid: vars.urivar.bookingId
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="b62ad1d2-337e-4f62-b863-fc9028f6ad8c" >
+			<when expression="#[!(isEmpty(payload))]" >
+				<db:update doc:name="Update booking" doc:id="04d6ca45-5f3a-4f59-839b-dfb109886ac4" config-ref="Database_Config" >
+					<db:sql ><![CDATA[UPDATE bookings
+SET cardNumber = :cardNumber,
+    expirationDate = :expirationDate,
+    cvv = :cvv
+WHERE userId = :userId AND bookingid = :bookingId;]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{ 
+    userId: vars.urivar.userId,
+    bookingId: vars.urivar.bookingId,
+    cardNumber: vars.urivar.cardNumber,
+    expirationDate: vars.urivar.expirationDate ,
+    cvv: vars.urivar.cvv  }]]]></db:input-parameters>
+				</db:update>
+				<ee:transform doc:name="response" doc:id="44a9af14-b40c-4c8c-b2f6-91cc19b17980" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "Booking details updated successfully"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="error response" doc:id="34ca2f3c-c9f4-45ba-81ff-be656bd8f949" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"error" : "invalid userid or bookingid"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>
